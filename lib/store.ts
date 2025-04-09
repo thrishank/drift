@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import {
+  BASE_PRECISION,
   BN,
+  convertToNumber,
   DriftClient,
+  MainnetPerpMarkets,
   MainnetSpotMarkets,
   Order,
   PRICE_PRECISION,
@@ -15,6 +18,13 @@ interface SubaccountData {
   orders: Order[];
   total_value: number;
   tokens: { symbol: string; balance: number; value: number }[];
+  perps: {
+    symbol: string;
+    amount: number;
+    entryPrice: number;
+    markPrice: number;
+    PnL: number;
+  }[];
 }
 
 interface DriftState {
@@ -28,7 +38,6 @@ interface DriftState {
   setSelectedSubaccountIndex: (index: number) => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
-
   initializeClient: (wallet: any, publicKey: PublicKey) => Promise<void>;
   fetchSubaccounts: (publicKey: PublicKey) => Promise<void>;
 }
@@ -100,12 +109,50 @@ export const useDriftStore = create<DriftState>((set, get) => ({
             item !== undefined
         );
 
+        const perps = MainnetPerpMarkets.map((token) => {
+          const userAccount = client.getUser(account.subAccountId);
+          const perpPosition = userAccount.getPerpPosition(token.marketIndex);
+
+          if (!perpPosition) {
+            return null; // Return null instead of an empty object
+          }
+
+          const entryBaseAmount = convertToNumber(
+            perpPosition.baseAssetAmount,
+            BASE_PRECISION
+          );
+          const entryQuoteAmount = convertToNumber(
+            perpPosition.quoteEntryAmount,
+            new BN(1000000)
+          );
+          const markQuoteAmount = convertToNumber(
+            perpPosition.quoteAssetAmount,
+            new BN(1000000)
+          );
+
+          const entryPrice =
+            entryBaseAmount !== 0 ? entryQuoteAmount / entryBaseAmount : 0;
+          const markPrice =
+            entryBaseAmount !== 0 ? markQuoteAmount / entryBaseAmount : 0;
+
+          const PnL = (markPrice - entryPrice) * entryBaseAmount * -1;
+
+          return {
+            symbol: token.symbol,
+            amount: entryBaseAmount,
+            entryPrice,
+            markPrice,
+            PnL,
+          };
+        }).filter((item) => item !== null); // Filter out null values
+
         return {
           name: Buffer.from(account.name).toString("utf8").trim(),
           index: account.subAccountId,
           orders: open_orders,
           total_value: account_balance,
           tokens: tokenAmounts,
+          perps,
         };
       });
 

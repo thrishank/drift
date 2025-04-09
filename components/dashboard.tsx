@@ -1,22 +1,13 @@
 "use client";
-import { format, formatNumber, pyth } from "@/lib/utils";
-import {
-  BN,
-  DriftClient,
-  MainnetSpotMarkets,
-  Order,
-  PRICE_PRECISION,
-} from "@drift-labs/sdk-browser";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection } from "@solana/web3.js";
-import { Transaction } from "@solana/web3.js";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWalletAdapter } from "@/lib/walletadapter";
 import { useDriftStore } from "@/lib/store";
 import { SubaccountSelector } from "./subaccountSelector";
 import { TokenBalances } from "./tokenBalance";
+import { Perps } from "./perps";
 
 export function Dashboard() {
   const { wallet, connected, publicKey, signTransaction, signAllTransactions } =
@@ -32,8 +23,6 @@ export function Dashboard() {
     initializeClient,
   } = useDriftStore();
 
-  const [status, setStatus] = useState(false);
-
   const [selectedSubaccount, setSelectedSubaccount] = useState(0);
   const [isSubaccountDropdownOpen, setIsSubaccountDropdownOpen] =
     useState(false);
@@ -48,7 +37,7 @@ export function Dashboard() {
     if (connected && publicKey && walletAdapter) {
       initializeClient(walletAdapter, publicKey);
     }
-  }, [connected, publicKey]);
+  }, [connected, publicKey, client]);
 
   if (!connected) {
     return (
@@ -131,27 +120,13 @@ export function Dashboard() {
               tokens={currentSubaccount.tokens}
               totalValue={currentSubaccount.total_value}
             />
-            {/* <PositionsPanel hasClient={!!client} /> */}
+            <Perps perps={currentSubaccount.perps} />
           </div>
         </TabsContent>{" "}
         <TabsContent value="positions">
-          <div className="bg-gray-900 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-6">Positions</h2>
-
-            <div className="grid grid-cols-4 gap-2 mb-2 text-sm text-gray-400">
-              <div>Market</div>
-              <div>Size</div>
-              <div>Mark Price</div>
-              <div>PnL</div>
-            </div>
-
-            <div className="py-4 border-t border-gray-800 text-center text-gray-400">
-              {client ? "Loading positions..." : "No positions found"}
-            </div>
-          </div>
+          <Perps perps={currentSubaccount.perps} />
         </TabsContent>
         <TabsContent value="orders">
-          {/* Open Orders Section */}
           <div className="bg-gray-900 rounded-lg p-6">
             <h2 className="text-xl font-bold mb-6">Open Orders</h2>
 

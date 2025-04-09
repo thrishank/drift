@@ -29,7 +29,7 @@ export function TokenBalances({ tokens, totalValue }: TokenBalancesProps) {
     return balance * value;
   };
 
-  const { client } = useDriftStore();
+  const { client, selectedSubaccountIndex } = useDriftStore();
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [selectedToken, setSelectedToken] = useState(0);
@@ -41,7 +41,12 @@ export function TokenBalances({ tokens, totalValue }: TokenBalancesProps) {
       marketIndex
     )!;
 
-    await client?.deposit(amount_value, marketIndex, associatedTokenAccount);
+    await client?.deposit(
+      amount_value,
+      marketIndex,
+      associatedTokenAccount,
+      selectedSubaccountIndex
+    );
   };
 
   const handleWithdraw = async (marketIndex: number, amount: number) => {
