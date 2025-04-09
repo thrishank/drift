@@ -39,7 +39,7 @@ interface DriftState {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   initializeClient: (wallet: any, publicKey: PublicKey) => Promise<void>;
-  fetchSubaccounts: (publicKey: PublicKey) => Promise<void>;
+  fetchSubaccounts: (publicKey: PublicKey, loading: boolean) => Promise<void>;
 }
 
 export const useDriftStore = create<DriftState>((set, get) => ({
@@ -66,22 +66,34 @@ export const useDriftStore = create<DriftState>((set, get) => ({
       connection,
       env: "mainnet-beta",
       wallet,
+      accountSubscription: {
+        type: "websocket",
+      },
     });
 
     set({ client: driftClient });
-    await get().fetchSubaccounts(publicKey);
+    await get().fetchSubaccounts(publicKey, true);
     set({ isLoading: false });
+
+    // polling
+    // setInterval(() => {
+    //   get().fetchSubaccounts(publicKey, false);
+    // }, 10000 * 6);
+    // fetch prices once and cache them and poll them
   },
 
-  fetchSubaccounts: async (publicKey) => {
+  fetchSubaccounts: async (publicKey, loading: boolean) => {
     const { client } = get();
     if (!client) return;
 
-    set({ isLoading: true });
+    if (loading) set({ isLoading: true });
+    else set({ isLoading: false });
 
     try {
       await client.subscribe();
       const sub_accounts = await client.getUserAccountsForAuthority(publicKey);
+
+      if (sub_accounts.length === 0) return;
 
       const accountPromises = sub_accounts.map(async (account) => {
         const user_account = client.getUser(account.subAccountId);
@@ -104,6 +116,7 @@ export const useDriftStore = create<DriftState>((set, get) => ({
           }
         });
 
+        // add cache to avoid multiple calls
         const tokenAmounts = (await Promise.all(tokenPromises)).filter(
           (item): item is { symbol: string; balance: number; value: number } =>
             item !== undefined
@@ -167,6 +180,7 @@ export const useDriftStore = create<DriftState>((set, get) => ({
       set({ subaccounts: subaccountsData });
     } catch (error) {
       console.error("Error fetching subaccounts:", error);
+      set({ isLoading: false });
     } finally {
       set({ isLoading: false });
     }

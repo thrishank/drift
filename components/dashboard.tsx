@@ -24,8 +24,10 @@ export function Dashboard() {
   } = useDriftStore();
 
   const currentSubaccount = subaccounts[selectedSubaccountIndex];
-  const [isSubaccountDropdownOpen, setIsSubaccountDropdownOpen] =
-    useState(false);
+
+  useEffect(() => {
+    console.log("sub account state changed so re render");
+  }, [currentSubaccount]);
 
   const walletAdapter = useMemo(() => {
     if (!publicKey || !signTransaction || !signAllTransactions) return null;
@@ -53,10 +55,18 @@ export function Dashboard() {
     );
   }
 
-  if (isLoading || subaccounts.length === 0) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[70vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isLoading && subaccounts.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[70vh]">
+        <div className="text-center font-bold">No Subaccounts Found</div>
       </div>
     );
   }

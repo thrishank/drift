@@ -33,7 +33,11 @@ export function Perps({ perps, detailed }: PositionsPanelProps) {
             className={`py-3 border-t border-gray-800 grid ${grid_col} gap-4 items-center text-white`}
           >
             <div>{position.symbol}</div>
-            <div className="font-bold">{formatNumber(position.amount)}</div>
+            <div className="font-bold">
+              {position.amount > 0
+                ? formatNumber(parseFloat(position.amount.toFixed(2)))
+                : formatNumber(parseFloat((position.amount * -1).toFixed(2)))}
+            </div>
             <div
               className={
                 position.amount > 0 ? "text-green-500" : "text-red-500"
@@ -53,7 +57,7 @@ export function Perps({ perps, detailed }: PositionsPanelProps) {
             <div
               className={position.PnL >= 0 ? "text-green-500" : "text-red-500"}
             >
-              {position.PnL >= 0 ? "+" : "-"}$
+              ${position.PnL >= 0 ? "+" : ""}
               {formatNumber(parseFloat(position.PnL.toFixed(2)))}
             </div>
           </div>

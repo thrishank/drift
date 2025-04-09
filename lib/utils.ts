@@ -1,9 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-
-import { Transaction, PublicKey } from "@solana/web3.js";
-import { convertToNumber, IWallet } from "@drift-labs/sdk-browser";
-
+import { convertToNumber } from "@drift-labs/sdk-browser";
 import { HermesClient } from "@pythnetwork/hermes-client";
 
 export function cn(...inputs: ClassValue[]) {
@@ -32,7 +29,7 @@ export function formatNumber(num: number): string {
   } else if (Math.abs(num) >= 1_000_000) {
     return (num / 1_000_000).toFixed(2).replace(/\.00$/, "") + "M";
   } else if (Math.abs(num) >= 1_000) {
-    return (num / 1_000).toFixed(2).replace(/\.00$/, "") + "K";
+    return (num / 1_000).toFixed(3).replace(/\.00$/, "") + "K";
   } else {
     return num.toString();
   }
