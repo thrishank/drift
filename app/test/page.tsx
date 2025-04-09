@@ -59,7 +59,7 @@ export default function page() {
       console.log("pnl", PnL);
       console.log(
         "amount",
-        convertToNumber(perps.baseAssetAmount, BASE_PRECISION)
+        convertToNumber(perps.baseAssetAmount, PRICE_PRECISION)
       );
 
       // amount and type of PERP

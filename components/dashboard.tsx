@@ -1,13 +1,13 @@
 "use client";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { useEffect, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWalletAdapter } from "@/lib/walletadapter";
 import { useDriftStore } from "@/lib/store";
 import { SubaccountSelector } from "./subaccountSelector";
 import { TokenBalances } from "./tokenBalance";
 import { Perps } from "./perps";
+import { OrdersPanel } from "./orders";
 
 export function Dashboard() {
   const { wallet, connected, publicKey, signTransaction, signAllTransactions } =
@@ -35,6 +35,7 @@ export function Dashboard() {
     return useWalletAdapter(publicKey, signTransaction, signAllTransactions);
   }, [publicKey, signTransaction, signAllTransactions]);
 
+  // on disconnecting clear the data also on change wallet
   useEffect(() => {
     if (connected && publicKey && walletAdapter) {
       initializeClient(walletAdapter, publicKey);
@@ -75,10 +76,6 @@ export function Dashboard() {
     setActiveTab(value);
   };
 
-  const getTokenUsdValue = (balance: number, value: number) => {
-    return balance * value;
-  };
-
   return (
     <div className="bg-gray-950 min-h-screen text-white p-10">
       <div className="flex justify-between items-center mb-6">
@@ -110,12 +107,6 @@ export function Dashboard() {
           >
             Orders
           </TabsTrigger>
-          <TabsTrigger
-            value="trade"
-            className="rounded-md px-6 py-3 data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400 hover:text-white"
-          >
-            Trade
-          </TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -130,57 +121,7 @@ export function Dashboard() {
           <Perps perps={currentSubaccount.perps} detailed={true} />
         </TabsContent>
         <TabsContent value="orders">
-          <div className="bg-gray-900 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-6">Open Orders</h2>
-
-            <div className="grid grid-cols-7 gap-2 mb-2 text-sm text-gray-400">
-              <div>Market</div>
-              <div>Side</div>
-              <div>Type</div>
-              <div>Size</div>
-              <div>Price</div>
-              <div>Time</div>
-              <div>Actions</div>
-            </div>
-
-            {currentSubaccount.orders && currentSubaccount.orders.length > 0 ? (
-              currentSubaccount.orders.map((order, index) => (
-                <div
-                  key={index}
-                  className="py-4 border-t border-gray-800 grid grid-cols-7 gap-2 items-center"
-                >
-                  <div>
-                    {order.marketIndex}-{order.marketType ? "PERP" : "SPOT"}
-                  </div>
-                  <div
-                    className={
-                      order.direction === "long"
-                        ? "text-green-500"
-                        : "text-red-500"
-                    }
-                  >
-                    {order.direction === "long" ? "BUY" : "SELL"}
-                  </div>
-                  <div>{order.baseAssetAmount.toString()}</div>
-                  <div>${order.price.toString()}</div>
-                  <div className="flex flex-col">
-                    <span>
-                      {new Date(order.slot * 1000).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <div>
-                    <button className="text-gray-400 hover:text-white">
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-4 border-t border-gray-800 text-center text-gray-400">
-                No open orders
-              </div>
-            )}
-          </div>
+          <OrdersPanel orders={currentSubaccount.orders} />
         </TabsContent>
       </Tabs>
     </div>
