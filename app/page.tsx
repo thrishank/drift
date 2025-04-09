@@ -4,12 +4,6 @@ import { Dashboard } from "@/components/dashboard";
 
 export default function Home() {
   /* 
-          const driftClient = new DriftClient({
-            connection,
-            wallet: walletAdapter,
-            env: "mainnet-beta",
-            programID: new PublicKey(DRIFT_PROGRAM_ID),
-          });
 
           await driftClient.subscribe();
           setDriftClient(driftClient);

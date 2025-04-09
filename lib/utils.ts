@@ -10,27 +10,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Create an adapter class that implements IWallet interface for Drift SDK
-export class WalletAdapterWrapper implements IWallet {
-  constructor(
-    public publicKey: PublicKey,
-    private _signTransaction: (
-      transaction: Transaction
-    ) => Promise<Transaction>,
-    private _signAllTransactions: (
-      transactions: Transaction[]
-    ) => Promise<Transaction[]>
-  ) {}
-
-  async signTransaction(tx: Transaction): Promise<Transaction> {
-    return await this._signTransaction(tx);
-  }
-
-  async signAllTransactions(txs: Transaction[]): Promise<Transaction[]> {
-    return await this._signAllTransactions(txs);
-  }
-}
-
 export function format(num: number, percision: number) {
   return convertToNumber(num, percision);
 }
