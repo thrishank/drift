@@ -109,13 +109,15 @@ export const useDriftStore = create<DriftState>((set, get) => ({
             item !== undefined
         );
 
-        const perps = MainnetPerpMarkets.map((token) => {
+        const perpsPromises = MainnetPerpMarkets.map(async (token) => {
           const userAccount = client.getUser(account.subAccountId);
           const perpPosition = userAccount.getPerpPosition(token.marketIndex);
 
           if (!perpPosition) {
             return null; // Return null instead of an empty object
           }
+
+          const isLong = perpPosition.baseAssetAmount.gte(new BN(0));
 
           const entryBaseAmount = convertToNumber(
             perpPosition.baseAssetAmount,
@@ -130,21 +132,26 @@ export const useDriftStore = create<DriftState>((set, get) => ({
             new BN(1000000)
           );
 
+          const marketPrice = (await pyth(token.pythFeedId!)) * -1;
+
           const entryPrice =
             entryBaseAmount !== 0 ? entryQuoteAmount / entryBaseAmount : 0;
-          const markPrice =
-            entryBaseAmount !== 0 ? markQuoteAmount / entryBaseAmount : 0;
-
-          const PnL = (markPrice - entryPrice) * entryBaseAmount * -1;
-
+          // const PnL = (markPrice - entryPrice) * entryBaseAmount * -1;
+          const PnL = isLong
+            ? (marketPrice - entryPrice) * entryBaseAmount * -1
+            : (entryPrice - marketPrice) * entryBaseAmount;
           return {
             symbol: token.symbol,
             amount: entryBaseAmount,
             entryPrice,
-            markPrice,
+            markPrice: marketPrice,
             PnL,
           };
-        }).filter((item) => item !== null); // Filter out null values
+        });
+
+        const perps = await Promise.all(perpsPromises).then((results) =>
+          results.filter((item) => item !== null)
+        );
 
         return {
           name: Buffer.from(account.name).toString("utf8").trim(),

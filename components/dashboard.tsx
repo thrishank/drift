@@ -23,7 +23,7 @@ export function Dashboard() {
     initializeClient,
   } = useDriftStore();
 
-  const [selectedSubaccount, setSelectedSubaccount] = useState(0);
+  const currentSubaccount = subaccounts[selectedSubaccountIndex];
   const [isSubaccountDropdownOpen, setIsSubaccountDropdownOpen] =
     useState(false);
 
@@ -61,19 +61,12 @@ export function Dashboard() {
     );
   }
 
-  const currentSubaccount = subaccounts[selectedSubaccount];
-
   const handleTabChange = (value: string) => {
     setActiveTab(value);
   };
 
   const getTokenUsdValue = (balance: number, value: number) => {
     return balance * value;
-  };
-
-  const handleSubaccountChange = (index: number) => {
-    setSelectedSubaccount(index);
-    setIsSubaccountDropdownOpen(false);
   };
 
   return (
@@ -124,7 +117,7 @@ export function Dashboard() {
           </div>
         </TabsContent>{" "}
         <TabsContent value="positions">
-          <Perps perps={currentSubaccount.perps} />
+          <Perps perps={currentSubaccount.perps} detailed={true} />
         </TabsContent>
         <TabsContent value="orders">
           <div className="bg-gray-900 rounded-lg p-6">
