@@ -25,9 +25,9 @@ export function Dashboard() {
 
   const currentSubaccount = subaccounts[selectedSubaccountIndex];
 
-  useEffect(() => {
-    console.log("sub account state changed so re render");
-  }, [currentSubaccount]);
+  // useEffect(() => {
+  //   console.log("sub account state changed so re render");
+  // }, [currentSubaccount]);
 
   const walletAdapter = useMemo(() => {
     if (!publicKey || !signTransaction || !signAllTransactions) return null;
@@ -40,7 +40,7 @@ export function Dashboard() {
     if (connected && publicKey && walletAdapter) {
       initializeClient(walletAdapter, publicKey);
     }
-  }, [connected, publicKey, client]);
+  }, [connected, publicKey, walletAdapter]);
 
   if (!connected) {
     return (
@@ -86,24 +86,24 @@ export function Dashboard() {
           </p>
         </div>
         <SubaccountSelector />
-      </div>{" "}
+      </div>
       <Tabs value={activeTab} onValueChange={handleTabChange} className="mb-6">
         <TabsList className="bg-gray-900 rounded-lg p-1">
           <TabsTrigger
             value="overview"
-            className="rounded-md px-6 py-3 data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400 hover:text-white"
+            className="rounded-md px-6 py-3 data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400 hover:text-white cursor-pointer"
           >
             Overview
           </TabsTrigger>
           <TabsTrigger
             value="positions"
-            className="rounded-md px-6 py-3 data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400 hover:text-white"
+            className="rounded-md px-6 py-3 data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400 hover:text-white cursor-pointer"
           >
             Positions
           </TabsTrigger>
           <TabsTrigger
             value="orders"
-            className="rounded-md px-6 py-3 data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400 hover:text-white"
+            className="rounded-md px-6 py-3 data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400 hover:text-white cursor-pointer"
           >
             Orders
           </TabsTrigger>

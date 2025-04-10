@@ -86,8 +86,7 @@ export const useDriftStore = create<DriftState>((set, get) => ({
     const { client } = get();
     if (!client) return;
 
-    if (loading) set({ isLoading: true });
-    else set({ isLoading: false });
+    set({ isLoading: loading });
 
     try {
       await client.subscribe();
@@ -180,7 +179,7 @@ export const useDriftStore = create<DriftState>((set, get) => ({
       set({ subaccounts: subaccountsData });
     } catch (error) {
       console.error("Error fetching subaccounts:", error);
-      set({ isLoading: false });
+      // set({ isLoading: false });
     } finally {
       set({ isLoading: false });
     }
