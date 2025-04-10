@@ -55,7 +55,6 @@ interface DriftState {
   priceCache: PythPriceCache;
   setPriceCache: (cache: PythPriceCache) => void;
   getCachedPythPrice: (feedId: string) => Promise<number>;
-  updatePythPrices: () => Promise<void>;
 
   initializeClient: (wallet: any, publicKey: PublicKey) => Promise<void>;
   fetchSubaccounts: (publicKey: PublicKey, loading: boolean) => Promise<void>;
@@ -78,11 +77,12 @@ export const useDriftStore = create<DriftState>((set, get) => ({
 
   // Get price from cache or fetch if needed
   getCachedPythPrice: async (feedId: string) => {
+    if (!feedId) return 0;
+
     const { priceCache } = get();
     const now = Date.now();
     const cacheEntry = priceCache[feedId];
 
-    // If we have a cache entry that's less than 10 seconds old, use it
     if (cacheEntry && now - cacheEntry.lastUpdated < 10000) {
       return cacheEntry.price;
     }
@@ -104,47 +104,6 @@ export const useDriftStore = create<DriftState>((set, get) => ({
     }
   },
 
-  updatePythPrices: async () => {
-    try {
-      const now = Date.now();
-      const newCache: PythPriceCache = { ...get().priceCache };
-
-      // Update spot market prices
-      for (const token of MainnetSpotMarkets) {
-        if (token.pythFeedId) {
-          try {
-            const price = await pyth(token.pythFeedId);
-            newCache[token.pythFeedId] = {
-              price,
-              lastUpdated: now,
-            };
-          } catch (error) {
-            console.error(`Failed to update price for ${token.symbol}:`, error);
-          }
-        }
-      }
-
-      // Update perp market prices
-      for (const token of MainnetPerpMarkets) {
-        if (token.pythFeedId) {
-          try {
-            const price = await pyth(token.pythFeedId);
-            newCache[token.pythFeedId] = {
-              price,
-              lastUpdated: now,
-            };
-          } catch (error) {
-            console.error(`Failed to update price for ${token.symbol}:`, error);
-          }
-        }
-      }
-
-      set({ priceCache: newCache });
-    } catch (error) {
-      console.error("Error updating Pyth prices:", error);
-    }
-  },
-
   initializeClient: async (wallet, publicKey) => {
     set({ isLoading: true });
 
@@ -163,21 +122,13 @@ export const useDriftStore = create<DriftState>((set, get) => ({
 
     set({ client: driftClient });
 
-    // Initialize price cache
-    await get().updatePythPrices();
-
     await get().fetchSubaccounts(publicKey, true);
     set({ isLoading: false });
-
-    // Set up polling for price updates (every 10 seconds)
-    setInterval(() => {
-      get().updatePythPrices();
-    }, 10000);
 
     // Set up polling for subaccount updates
     setInterval(() => {
       get().fetchSubaccounts(publicKey, false);
-    }, 30000); // Every minute
+    }, 30000); // Every 30 seconds
   },
 
   fetchSubaccounts: async (publicKey, loading: boolean) => {
@@ -200,38 +151,40 @@ export const useDriftStore = create<DriftState>((set, get) => ({
         );
         const open_orders = user_account?.getOpenOrders() || [];
 
-        const tokenPromises = MainnetSpotMarkets.map(async (token) => {
+        const userTokens = MainnetSpotMarkets.filter((token) => {
+          const balance = user_account?.getTokenAmount(token.marketIndex);
+          const formattedBalance = format(balance, token.precision);
+          return balance && balance.gte(new BN(0)) && formattedBalance > 0;
+        });
+
+        const tokenPromises = userTokens.map(async (token) => {
           const balance = user_account?.getTokenAmount(token.marketIndex);
           const format_balance = format(balance, token.precision);
 
-          if (balance && balance.gte(new BN(0)) && format_balance > 0) {
-            return {
-              symbol: token.symbol,
-              balance: format_balance,
-              value: await get().getCachedPythPrice(token.pythFeedId!),
-              marketIndex: token.marketIndex,
-            };
-          }
+          // Only fetch the price if we have a valid token with balance
+          const price = await get().getCachedPythPrice(token.pythFeedId!);
+
+          return {
+            symbol: token.symbol,
+            balance: format_balance,
+            value: price,
+            marketIndex: token.marketIndex,
+          };
         });
 
-        const tokenAmounts = (await Promise.all(tokenPromises)).filter(
-          (
-            item
-          ): item is {
-            symbol: string;
-            balance: number;
-            value: number;
-            marketIndex: number;
-          } => item !== undefined
-        );
+        const tokenAmounts = await Promise.all(tokenPromises);
 
-        const perpsPromises = MainnetPerpMarkets.map(async (token) => {
+        const userPerpPositions = MainnetPerpMarkets.filter((token) => {
+          const userAccount = client.getUser(account.subAccountId);
+          const perpPosition = userAccount.getPerpPosition(token.marketIndex);
+          return perpPosition !== undefined;
+        });
+
+        const perpsPromises = userPerpPositions.map(async (token) => {
           const userAccount = client.getUser(account.subAccountId);
           const perpPosition = userAccount.getPerpPosition(token.marketIndex);
 
-          if (!perpPosition) {
-            return null; // Return null instead of an empty object
-          }
+          if (!perpPosition) return null;
 
           const isLong = perpPosition.baseAssetAmount.gte(new BN(0));
 
@@ -256,6 +209,7 @@ export const useDriftStore = create<DriftState>((set, get) => ({
           const PnL = isLong
             ? (marketPrice - entryPrice) * entryBaseAmount * -1
             : (entryPrice - marketPrice) * entryBaseAmount;
+
           return {
             symbol: token.symbol,
             amount: entryBaseAmount,
@@ -265,8 +219,8 @@ export const useDriftStore = create<DriftState>((set, get) => ({
           };
         });
 
-        const perps = await Promise.all(perpsPromises).then((results) =>
-          results.filter((item) => item !== null)
+        const perps = (await Promise.all(perpsPromises)).filter(
+          (item) => item !== null
         );
 
         return {
