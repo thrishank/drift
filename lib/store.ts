@@ -17,7 +17,12 @@ interface SubaccountData {
   index: number;
   orders: Order[];
   total_value: number;
-  tokens: { symbol: string; balance: number; value: number }[];
+  tokens: {
+    symbol: string;
+    balance: number;
+    value: number;
+    marketIndex: number;
+  }[];
   perps: {
     symbol: string;
     amount: number;
@@ -25,6 +30,14 @@ interface SubaccountData {
     markPrice: number;
     PnL: number;
   }[];
+}
+
+// Add cache interface for Pyth prices
+interface PythPriceCache {
+  [feedId: string]: {
+    price: number;
+    lastUpdated: number;
+  };
 }
 
 interface DriftState {
@@ -38,6 +51,12 @@ interface DriftState {
   setSelectedSubaccountIndex: (index: number) => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+
+  priceCache: PythPriceCache;
+  setPriceCache: (cache: PythPriceCache) => void;
+  getCachedPythPrice: (feedId: string) => Promise<number>;
+  updatePythPrices: () => Promise<void>;
+
   initializeClient: (wallet: any, publicKey: PublicKey) => Promise<void>;
   fetchSubaccounts: (publicKey: PublicKey, loading: boolean) => Promise<void>;
 }
@@ -54,6 +73,77 @@ export const useDriftStore = create<DriftState>((set, get) => ({
     set({ selectedSubaccountIndex: index }),
   activeTab: "overview",
   setActiveTab: (tab) => set({ activeTab: tab }),
+  priceCache: {},
+  setPriceCache: (cache) => set({ priceCache: cache }),
+
+  // Get price from cache or fetch if needed
+  getCachedPythPrice: async (feedId: string) => {
+    const { priceCache } = get();
+    const now = Date.now();
+    const cacheEntry = priceCache[feedId];
+
+    // If we have a cache entry that's less than 10 seconds old, use it
+    if (cacheEntry && now - cacheEntry.lastUpdated < 10000) {
+      return cacheEntry.price;
+    }
+
+    try {
+      const price = await pyth(feedId);
+      get().setPriceCache({
+        ...get().priceCache,
+        [feedId]: {
+          price,
+          lastUpdated: now,
+        },
+      });
+      return price;
+    } catch (error) {
+      console.error(`Error fetching price for feed ${feedId}:`, error);
+      // Return cached price if available, even if outdated
+      return cacheEntry ? cacheEntry.price : 0;
+    }
+  },
+
+  updatePythPrices: async () => {
+    try {
+      const now = Date.now();
+      const newCache: PythPriceCache = { ...get().priceCache };
+
+      // Update spot market prices
+      for (const token of MainnetSpotMarkets) {
+        if (token.pythFeedId) {
+          try {
+            const price = await pyth(token.pythFeedId);
+            newCache[token.pythFeedId] = {
+              price,
+              lastUpdated: now,
+            };
+          } catch (error) {
+            console.error(`Failed to update price for ${token.symbol}:`, error);
+          }
+        }
+      }
+
+      // Update perp market prices
+      for (const token of MainnetPerpMarkets) {
+        if (token.pythFeedId) {
+          try {
+            const price = await pyth(token.pythFeedId);
+            newCache[token.pythFeedId] = {
+              price,
+              lastUpdated: now,
+            };
+          } catch (error) {
+            console.error(`Failed to update price for ${token.symbol}:`, error);
+          }
+        }
+      }
+
+      set({ priceCache: newCache });
+    } catch (error) {
+      console.error("Error updating Pyth prices:", error);
+    }
+  },
 
   initializeClient: async (wallet, publicKey) => {
     set({ isLoading: true });
@@ -72,14 +162,22 @@ export const useDriftStore = create<DriftState>((set, get) => ({
     });
 
     set({ client: driftClient });
+
+    // Initialize price cache
+    await get().updatePythPrices();
+
     await get().fetchSubaccounts(publicKey, true);
     set({ isLoading: false });
 
-    // polling
-    // setInterval(() => {
-    //   get().fetchSubaccounts(publicKey, false);
-    // }, 10000 * 6);
-    // fetch prices once and cache them and poll them
+    // Set up polling for price updates (every 10 seconds)
+    setInterval(() => {
+      get().updatePythPrices();
+    }, 10000);
+
+    // Set up polling for subaccount updates
+    setInterval(() => {
+      get().fetchSubaccounts(publicKey, false);
+    }, 30000); // Every minute
   },
 
   fetchSubaccounts: async (publicKey, loading: boolean) => {
@@ -110,15 +208,21 @@ export const useDriftStore = create<DriftState>((set, get) => ({
             return {
               symbol: token.symbol,
               balance: format_balance,
-              value: await pyth(token.pythFeedId!),
+              value: await get().getCachedPythPrice(token.pythFeedId!),
+              marketIndex: token.marketIndex,
             };
           }
         });
 
-        // add cache to avoid multiple calls
         const tokenAmounts = (await Promise.all(tokenPromises)).filter(
-          (item): item is { symbol: string; balance: number; value: number } =>
-            item !== undefined
+          (
+            item
+          ): item is {
+            symbol: string;
+            balance: number;
+            value: number;
+            marketIndex: number;
+          } => item !== undefined
         );
 
         const perpsPromises = MainnetPerpMarkets.map(async (token) => {
@@ -144,11 +248,11 @@ export const useDriftStore = create<DriftState>((set, get) => ({
             new BN(1000000)
           );
 
-          const marketPrice = (await pyth(token.pythFeedId!)) * -1;
+          const marketPrice =
+            (await get().getCachedPythPrice(token.pythFeedId!)) * -1;
 
           const entryPrice =
             entryBaseAmount !== 0 ? entryQuoteAmount / entryBaseAmount : 0;
-          // const PnL = (markPrice - entryPrice) * entryBaseAmount * -1;
           const PnL = isLong
             ? (marketPrice - entryPrice) * entryBaseAmount * -1
             : (entryPrice - marketPrice) * entryBaseAmount;
@@ -179,7 +283,6 @@ export const useDriftStore = create<DriftState>((set, get) => ({
       set({ subaccounts: subaccountsData });
     } catch (error) {
       console.error("Error fetching subaccounts:", error);
-      // set({ isLoading: false });
     } finally {
       set({ isLoading: false });
     }

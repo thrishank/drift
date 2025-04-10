@@ -9,8 +9,8 @@ import { useWallet } from "@solana/wallet-adapter-react";
 
 const navItems = [
   { name: "Overview", path: "/" },
-  { name: "trade", path: "/trade" },
-  { name: "Docs", path: "/docs", external: true },
+  { name: "trade", path: "https://app.drift.trade/", external: true },
+  { name: "Docs", path: "https://docs.drift.trade/", external: true },
 ];
 
 export function Navbar() {

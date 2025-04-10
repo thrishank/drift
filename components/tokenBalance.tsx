@@ -20,7 +20,12 @@ import {
 import { Input } from "./ui/input";
 
 interface TokenBalancesProps {
-  tokens: { symbol: string; balance: number; value: number }[];
+  tokens: {
+    symbol: string;
+    balance: number;
+    value: number;
+    marketIndex: number;
+  }[];
   totalValue: number;
 }
 
@@ -28,6 +33,8 @@ export function TokenBalances({ tokens, totalValue }: TokenBalancesProps) {
   const getTokenUsdValue = (balance: number, value: number) => {
     return balance * value;
   };
+
+  const tokensWithBalance = tokens.filter((token) => token.balance > 0);
 
   const { client, selectedSubaccountIndex } = useDriftStore();
   const [isDepositOpen, setIsDepositOpen] = useState(false);
@@ -49,6 +56,7 @@ export function TokenBalances({ tokens, totalValue }: TokenBalancesProps) {
     );
   };
 
+  //withdraw only show the tokens that are in the subaccount
   const handleWithdraw = async (marketIndex: number, amount: number) => {
     const amount_value = client?.convertToSpotPrecision(marketIndex, amount);
     const associatedTokenAccount = await client?.getAssociatedTokenAccount(
@@ -199,13 +207,13 @@ export function TokenBalances({ tokens, totalValue }: TokenBalancesProps) {
                   <SelectValue placeholder="Select a token" />
                 </SelectTrigger>
                 <SelectContent className="bg-gray-800 text-white border border-gray-700 rounded-lg">
-                  {MainnetSpotMarkets.map((token) => (
+                  {tokensWithBalance.map((token) => (
                     <SelectItem
-                      key={token.marketIndex}
+                      key={token.symbol}
                       value={token.marketIndex.toString()}
                       className="hover:bg-gray-700 focus:bg-gray-700"
                     >
-                      {token.symbol}
+                      {token.symbol} ({token.balance})
                     </SelectItem>
                   ))}
                 </SelectContent>
