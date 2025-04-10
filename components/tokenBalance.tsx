@@ -18,14 +18,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "./ui/input";
+import { Token } from "@/lib/types";
 
 interface TokenBalancesProps {
-  tokens: {
-    symbol: string;
-    balance: number;
-    value: number;
-    marketIndex: number;
-  }[];
+  tokens: Token[];
   totalValue: number;
 }
 

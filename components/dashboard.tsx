@@ -10,12 +10,11 @@ import { Perps } from "./perps";
 import { OrdersPanel } from "./orders";
 
 export function Dashboard() {
-  const { wallet, connected, publicKey, signTransaction, signAllTransactions } =
+  const { connected, publicKey, signTransaction, signAllTransactions } =
     useWallet();
 
   const {
     isLoading,
-    client,
     subaccounts,
     selectedSubaccountIndex,
     activeTab,

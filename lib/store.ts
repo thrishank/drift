@@ -6,33 +6,12 @@ import {
   DriftClient,
   MainnetPerpMarkets,
   MainnetSpotMarkets,
-  Order,
   PRICE_PRECISION,
 } from "@drift-labs/sdk-browser";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { format, pyth } from "@/lib/utils";
+import { SubaccountData } from "./types";
 
-interface SubaccountData {
-  name: string;
-  index: number;
-  orders: Order[];
-  total_value: number;
-  tokens: {
-    symbol: string;
-    balance: number;
-    value: number;
-    marketIndex: number;
-  }[];
-  perps: {
-    symbol: string;
-    amount: number;
-    entryPrice: number;
-    markPrice: number;
-    PnL: number;
-  }[];
-}
-
-// Add cache interface for Pyth prices
 interface PythPriceCache {
   [feedId: string]: {
     price: number;

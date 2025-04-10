@@ -7,7 +7,6 @@ import {
   MainnetSpotMarkets,
   PRICE_PRECISION,
 } from "@drift-labs/sdk-browser";
-import { X } from "lucide-react";
 
 interface OrdersPanelProps {
   orders: Order[];

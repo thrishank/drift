@@ -1,13 +1,8 @@
+import { Perp } from "@/lib/types";
 import { formatNumber } from "@/lib/utils";
 
 interface PositionsPanelProps {
-  perps: {
-    symbol: string;
-    amount: number;
-    entryPrice: number;
-    markPrice: number;
-    PnL: number;
-  }[];
+  perps: Perp[];
   detailed?: boolean;
 }
 
